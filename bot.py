@@ -1,47 +1,88 @@
 #!/usr/bin/python3
-import os, random, re, asyncio
+import os, sys, random, re, asyncio, traceback
 
 import discord
 from dotenv import load_dotenv
 
 import TowerOfHanoi
-hanoi = 0
 hanoi_games = {}
 
-async def play_hanoi(height: int, id: int):
-    response = "error"
-    if (game := hanoi_games.get(id)):
-        print(f"{game=}")
-        if type(game) == TowerOfHanoi.TowerOfHanoi:
-            response = str(game)
+async def bot_games(message):
+    response = ""
+    # Die roller
+    if (match := re.match(r"roll\sd(\d+)", message.content,re.I)):
+        response = await roll_die(int(match.group(1)))
+    # Start a Tower of Hanoi game
+    elif (match := re.match(r"hanoi\s?(newgame)?\s?(\d+)?\s?([LlMmRr]{2})?", 
+                            message.content,re.I)):
+        if hanoi_games.get(message.guild.id) and \
+            not (match.group(1) or match.group(3)):
+            
+            response = ("Not a valid move, please use `hanoi LMR`. If you want "
+                        "to start a new game please use "
+                        "`hanoi newgame [height]`"
+                    )
+        # If a game of Tower of Hanoi is in progress take turn
+        elif hanoi_games.get(message.guild.id) and match.group(3):
+            response = await take_hanoi_turn(match.group(3), message.guild.id)
         else:
-            hanoi_games[id] = TowerOfHanoi.TowerOfHanoi(height)
-            game = hanoi_games[id]
-            response = str(game)
+            height = match.group(2)
+            if height:
+                height = int(height)
+                if height > 12:
+                    height = 12
+                    response = "I'm sorry, but due to Discord's character " \
+                               "limit, I can't make a tower taller than 12\n\n"     
+            else:
+                height = 4
+                response = "No height specified, using the default height of " \
+                          f"{height}\n"
+            response += await start_hanoi(height, message.guild.id)
+    # If no conditions are met ignore message
     else:
-        hanoi_games[id] = TowerOfHanoi.TowerOfHanoi(height)
-        game = hanoi_games[id]
-        print(f"{game=}")
-        response = str(game)
+        return None
     return response
 
+# ==============================================================================
+# Tower of Hanoi
+# ==============================================================================
 
-async def roll_die(match: re.Match):
-    number = match.group(1)
-    die_number = int(number)
-    if die_number < 2:
+
+async def start_hanoi(height: int, id: int):
+    hanoi_games[id] = TowerOfHanoi.TowerOfHanoi(height)
+    game = hanoi_games[id]
+    game.start_game()
+    response = game.response
+    return response
+
+async def take_hanoi_turn(command: str, id: int):
+    game = hanoi_games[id]
+    game.take_turn(command)
+    response = game.response
+    if game.game_over():
+        del hanoi_games[id]
+    else:
+        hanoi_games[id] = game
+    return response
+
+# ==============================================================================
+# Die Roller
+# ==============================================================================
+
+async def roll_die(val: int):
+    if val < 2:
         response = "🎲 That die does not have enough faces, " \
                     "I can't roll it for you 🎲"
-    elif die_number > 1:
-        roll = random.randint(1,die_number)
+    elif val > 1:
+        roll = random.randint(1,val)
         response = f"🎲 I rolled a {roll} with a " \
-                    f"{die_number}-sided die 🎲"
+                    f"{val}-sided die 🎲"
         if roll == 69:
             response = response[:-2] + ". Nice! 🎲"
         elif roll == 420:
             response = response[:-2] + ". Dank! 🎲"
-        elif roll == die_number:
-            response = f"🎲 Nat {die_number}! Woohoo! 🎲"
+        elif roll == val:
+            response = f"🎲 Nat {val}! Woohoo! 🎲"
         await asyncio.sleep(1)
         print(response)
     else:
@@ -53,10 +94,9 @@ async def roll_die(match: re.Match):
 # ==============================================================================
 
 load_dotenv()
-try:
-    TOKEN = os.getenv('DISCORD_TOKEN')
-except:
-    pass
+
+TOKEN = os.getenv('DISCORD_TOKEN')
+
 
 client = discord.Client()
 
@@ -69,32 +109,15 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    response = None
     # Prevent the bot from responding to itself
     if message.author == client.user:
         return
     # Checks the '#bot-games' channel for commands
     if message.channel.name == "bot-games":
-        if (match := re.match(r"!roll\sd(\d+)", message.content,re.I)):
-            response = await roll_die(match)
-        elif (match := re.match(r"!hanoi\s?(?:(\d*)|(newgame))", message.content,re.I)):
-            print(match.group(0), match.group(1), match.group(2))
-            if hanoi_games.get(message.guild.id) and not match.group(2):
-                response = "Someone has already started a game. "\
-                           "Would you like to start a new one?"
-            elif height := match.group(1):
-                height = int(height)
-                response = await play_hanoi(height, message.guild.id)
-            else:
-              response = "how high do you want the tower?"
-              hanoi_games[message.guild.id] = 1
-        elif hanoi_games[message.guild.id] == 1 and \
-            (match := re.match(r"(\d+)",message.content)):
-            height = int(match.group(1))
-            response = await play_hanoi(height, message.guild.id)
-        else:
-            return
+        response = await bot_games(message)
     # Checks for mentions and sends a help message
-    elif client.user in message.mentions:
+    if client.user in message.mentions:
         channel_name = "#bot-games"
         if (channel := discord.utils.get(message.guild.text_channels,
                                          name="bot-games")):
@@ -104,13 +127,31 @@ async def on_message(message):
                     "If the channel does not exist on this server, ask an " \
                     "admin to create it.\n" \
                     "Available commands:\n" \
-                    " - `!roll d<number>` (Roll a die of the specified size)\n"\
-                    " - `!hanoi <number>` (Play a game of Tower of Hanoi with "\
+                    " - `roll d<number>` (Roll a die of the specified size)\n"\
+                    " - `hanoi <number>` (Play a game of Tower of Hanoi with "\
                     "a specified tower height)"
-    else:
-        return
-    await message.channel.send(response)
 
+        if re.search(r"(github)", message.content, re.I):
+            response = "Check out the GitHub: " \
+                       "https://github.com/ievans-HMC/SirCrazyBot"
+    else:
+        response = None
+    if response:
+        await message.channel.send(response)
+        print(response)
+
+@client.event
+async def on_error(event, *args, **kwargs):
+    message = f"error in event: {event}\n" \
+              f"{args[0]}\n" \
+              f"{traceback.format_exc()}"
+
+    # Notify creators in case of error
+    Isaiah = discord.utils.get(client.users,id=105053596957052928)
+    Kevin = discord.utils.get(client.users,id=177222295507435520)
+    if type(args[0].channel) != discord.DMChannel:
+        await Isaiah.send(message)
+        await Kevin.send(message)
 
 if __name__ == "__main__":
     client.run(TOKEN)

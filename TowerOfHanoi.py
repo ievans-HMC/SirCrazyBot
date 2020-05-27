@@ -8,15 +8,12 @@ class TowerOfHanoi:
         """
         Create a Tower of Hanoi game with the specified height
         """
-        if height < 1:
-            raise ValueError("Tower must have a positive height")
         self.max_height = height
         self.left_tower = []
         self.middle_tower = []
         self.right_tower = [i for i in range(height,0,-1)]
         self.num_moves = 0
-
-        # print(self.right_tower)
+        self.response = ""
 
     def __str__(self):
         """
@@ -73,14 +70,34 @@ class TowerOfHanoi:
                 tower += " " * (self.max_height - 1)
             tower += "\n"
         tower += "=" * (3 * (2 * self.max_height) + 1) + "\n"
-        tower += "```"
+        tower += "```\n"
         return tower
 
+    def start_game(self):
+        self.response = (
+                "__**Rules:**__ Your goal is to move all the layers of the "
+                "tower on the right to the tower on the left in as few moves "
+                "as possible. You are not allowed to stack a larger layer onto "
+                "a smaller one.\n"
+                "__**Controls:**__ L = left tower | M = middle ""tower | R = "
+                "right tower \n"
+                "Move a layer by typing `hanoi` along with the tower you want "
+                "to move from followed by the tower you want to move to \n"
+                "e.g. `hanoi RM` would move the top of the right tower onto "
+                "the middle tower.\n"
+                f"**Starting game with a {self.max_height} layer tower...** "
+                "The optimal solution for a tower of this height uses "
+                f"{2**self.max_height - 1} moves\n"
+                f"{str(self)}"
+                "make a move with `hanoi LMR`"
+            )
+            
     def game_over(self):
         """
         Checks whether the game is over.
         """
-        return self.middle_tower == [] and self.right_tower == []
+        return (self.middle_tower == [] and self.right_tower == []) or \
+            self.max_height < 1
 
     def move(self, src: list, dst: list):
         """
@@ -97,15 +114,10 @@ class TowerOfHanoi:
                 if dst[-1] > src[-1]:
                     dst.append(src.pop())
                     return True
-                else:
-                    print("That is not a valid move! Please try again")
-                    return False
             else:
                 dst.append(src.pop())
                 return True
-        else:
-            print("That is not a valid move! Please try again")
-            return False
+        return False
         
     def get_tower(self, tower: str):
         """
@@ -121,25 +133,18 @@ class TowerOfHanoi:
         elif re.match(r"^[Rr]$",tower):
             return self.right_tower
 
-    def play(self):
-        print(self)
-        print(  "Rules: L = left tower | M = middle tower | R = right "
-                "tower \n"
-                "Move by typing the tower you want to move from followed "
-                "by the tower you want to move to \n"
-                "e.g. 'LM' would move the top of the left tower onto the "
-                "middle tower")
-
-        while not self.game_over():
-            move = False
-            while not move:
-                move_string = input("Make a move!\n")
-                while not re.match(r"^[LMRlmr]{2}$",move_string):
-                    move_string = input("That is not a move!\n")
-                src = self.get_tower(move_string[0])
-                dst = self.get_tower(move_string[1])
-                move = self.move(src,dst)
-            self.num_moves += 1
-            print(self)
-        print(f"Congratulations! You won in {self.num_moves} turns!")
+    def take_turn(self, move_string: str):
+        src = self.get_tower(move_string[0])
+        dst = self.get_tower(move_string[1])
+        move = self.move(src,dst)
+        if not move:
+            self.response = "That is not a valid move. Please try again"
+            return
+        self.num_moves += 1
+        self.response = str(self)
+        if self.game_over():
+            self.response += ("Congratulations! You won in "
+                             f"{self.num_moves} turns!")
+        else:
+            self.response += "Make a your next move!"
         
