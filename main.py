@@ -1,4 +1,4 @@
-# bot.py
+#!/usr/bin/python3
 import os, random, re, asyncio
 
 import discord
@@ -73,8 +73,8 @@ async def on_message(message):
     if message.channel.name == "bot-games":
         if (match := re.match(r"!roll\sd(\d+)", message.content,re.I)):
             response = await roll_die(match)
-        elif (match := re.match(r"!hanoi\s?(\d*)|(newgame)", message.content,re.I)):
-            print(match.group(1))
+        elif (match := re.match(r"!hanoi\s?(?:(\d*)|(newgame))", message.content,re.I)):
+            print(match.group(0), match.group(1), match.group(2))
             if hanoi_games.get(message.guild.id) and not match.group(2):
                 response = "Someone has already started a game. "\
                            "Would you like to start a new one?"
@@ -108,4 +108,6 @@ async def on_message(message):
         return
     await message.channel.send(response)
 
-client.run(TOKEN)
+
+if __name__ == "__main__":
+    client.run(TOKEN)
