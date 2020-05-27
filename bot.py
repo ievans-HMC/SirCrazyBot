@@ -4,25 +4,64 @@ import os, random, re, asyncio
 import discord
 from dotenv import load_dotenv
 
+async def bot_games(message):
+    # Die roller
+    if (match := re.match(r"roll\sd(\d+)", message.content,re.I)):
+        response = await roll_die(match)
+    # Start a Tower of Hanoi game
+    elif (match := re.match(r"hanoi\s?(\d+)?\s?(newgame)?([LlMmRr]{2})?", 
+                            message.content,re.I)):
+        print(match.group(0), match.group(1), match.group(2),match.group(3))
+        if hanoi_games.get(message.guild.id) and not match.group(2):
+            response = "Someone has already started a game on this " \
+                        "server. Use `hanoi newgame` to start a new one"
+        elif height := match.group(1):
+            height = int(height)
+            response = await start_hanoi(height, message.guild.id)
+        else:
+            response = "how high do you want the tower?"
+            hanoi_games[message.guild.id] = 1
+    # get height of Tower of Hanoi game
+    elif hanoi_games.get(message.guild.id) == 1 and \
+        (match := re.match(r"(\d+)",message.content)):
+        height = int(match.group(1))
+        if height:
+            response = await start_hanoi(height, message.guild.id)
+        else:
+            response = "The tower has to have at least one layer dummy"
+    elif hanoi_games.get(message.guild.id):
+        response = await take_hanoi_turn(match.group(3), message.guild.id)
+    # If no conditions are met ignore message
+    else:
+        return None
+    return response
+
+
 import TowerOfHanoi
 hanoi = 0
 hanoi_games = {}
 
-async def play_hanoi(height: int, id: int):
+async def start_hanoi(height: int, id: int):
     response = "error"
     if (game := hanoi_games.get(id)):
         print(f"{game=}")
         if type(game) == TowerOfHanoi.TowerOfHanoi:
-            response = str(game)
+            response = game.response
         else:
             hanoi_games[id] = TowerOfHanoi.TowerOfHanoi(height)
             game = hanoi_games[id]
-            response = str(game)
+            response = game.response
     else:
         hanoi_games[id] = TowerOfHanoi.TowerOfHanoi(height)
         game = hanoi_games[id]
-        print(f"{game=}")
-        response = str(game)
+        response = game.response
+    return response
+
+async def take_hanoi_turn(command: str, id: int):
+    game = hanoi_games[id]
+    game.play(command)
+    response = game.response
+    hanoi_games[id] = game
     return response
 
 
@@ -73,26 +112,7 @@ async def on_message(message):
         return
     # Checks the '#bot-games' channel for commands
     if message.channel.name == "bot-games":
-        if (match := re.match(r"roll\sd(\d+)", message.content,re.I)):
-            response = await roll_die(match)
-        elif (match := re.match(r"hanoi\s?(?:(\d*)|(newgame))", 
-                                message.content,re.I)):
-            print(match.group(0), match.group(1), match.group(2))
-            if hanoi_games.get(message.guild.id) and not match.group(2):
-                response = "Someone has already started a game. "\
-                           "Would you like to start a new one?"
-            elif height := match.group(1):
-                height = int(height)
-                response = await play_hanoi(height, message.guild.id)
-            else:
-              response = "how high do you want the tower?"
-              hanoi_games[message.guild.id] = 1
-        elif hanoi_games[message.guild.id] == 1 and \
-            (match := re.match(r"(\d+)",message.content)):
-            height = int(match.group(1))
-            response = await play_hanoi(height, message.guild.id)
-        else:
-            return
+        response = await bot_games(message)
     # Checks for mentions and sends a help message
     elif client.user in message.mentions:
         channel_name = "#bot-games"
@@ -108,8 +128,9 @@ async def on_message(message):
                     " - `hanoi <number>` (Play a game of Tower of Hanoi with "\
                     "a specified tower height)"
     else:
-        return
-    await message.channel.send(response)
+        response = None
+    if response:
+        await message.channel.send(response)
 
 
 if __name__ == "__main__":
