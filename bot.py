@@ -8,12 +8,21 @@ import TowerOfHanoi
 hanoi = 0
 hanoi_games = {}
 
-async def play_hanoi(height: int, id: str):
-    response = ""
-    if game := hanoi_games.get(id):
-        response = str(game)
+async def play_hanoi(height: int, id: int):
+    response = "error"
+    if (game := hanoi_games.get(id)):
+        print(f"{game=}")
+        if type(game) == TowerOfHanoi.TowerOfHanoi:
+            response = str(game)
+        else:
+            hanoi_games[id] = TowerOfHanoi.TowerOfHanoi(height)
+            game = hanoi_games[id]
+            response = str(game)
     else:
         hanoi_games[id] = TowerOfHanoi.TowerOfHanoi(height)
+        game = hanoi_games[id]
+        print(f"{game=}")
+        response = str(game)
     return response
 
 
@@ -57,20 +66,31 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    # Prevent the bot from responding to itself
+    if message.author == client.user:
+        return
+    # Checks the '#bot-games' channel for commands
     if message.channel.name == "bot-games":
         if (match := re.match(r"!roll\sd(\d+)", message.content,re.I)):
             response = await roll_die(match)
-        elif (match := re.match(r"!hanoi\s?(\d*)", message.content,re.I)):
-            if height := match.group(1):
+        elif (match := re.match(r"!hanoi\s?(\d*)|(newgame)", message.content,re.I)):
+            print(match.group(1))
+            if hanoi_games.get(message.guild.id) and not match.group(2):
+                response = "Someone has already started a game. "\
+                           "Would you like to start a new one?"
+            elif height := match.group(1):
                 height = int(height)
                 response = await play_hanoi(height, message.guild.id)
             else:
               response = "how high do you want the tower?"
-              hanoi_games[message.guild.id] = 0
-        elif hanoi == 1 and (match := re.match(r"(\d+)",message.content)):
+              hanoi_games[message.guild.id] = 1
+        elif hanoi_games[message.guild.id] == 1 and \
+            (match := re.match(r"(\d+)",message.content)):
+            height = int(match.group(1))
             response = await play_hanoi(height, message.guild.id)
         else:
             return
+    # Checks for mentions and sends a help message
     elif client.user in message.mentions:
         channel_name = "#bot-games"
         if (channel := discord.utils.get(message.guild.text_channels,
