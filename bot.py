@@ -53,7 +53,10 @@ async def roll_die(match: re.Match):
 # ==============================================================================
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+try:
+    TOKEN = os.getenv('DISCORD_TOKEN')
+except:
+    pass
 
 client = discord.Client()
 
