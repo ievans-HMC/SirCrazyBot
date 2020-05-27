@@ -8,13 +8,12 @@ class TowerOfHanoi:
         """
         Create a Tower of Hanoi game with the specified height
         """
-        if height < 1:
-            raise ValueError("Tower must have a positive height")
         self.max_height = height
         self.left_tower = []
         self.middle_tower = []
         self.right_tower = [i for i in range(height,0,-1)]
         self.num_moves = 0
+        self.response = ""
 
     def __str__(self):
         """
@@ -76,19 +75,21 @@ class TowerOfHanoi:
 
     def start_game(self):
         self.response = (
-                f"{str(self)}"
-                "Rules: Your goal is to move all the layers of the tower on "
-                "the right to the tower on the left in as few moves as "
-                "possible. You are not allowed to stack a larger layer onto a "
-                "smaller one.\n"
-                "Controls: L = left tower | M = middle tower | R = right tower "
-                "\n"
+                "__**Rules:**__ Your goal is to move all the layers of the "
+                "tower on the right to the tower on the left in as few moves "
+                "as possible. You are not allowed to stack a larger layer onto "
+                "a smaller one.\n"
+                "__**Controls:**__ L = left tower | M = middle ""tower | R = "
+                "right tower \n"
                 "Move a layer by typing `hanoi` along with the tower you want "
                 "to move from followed by the tower you want to move to \n"
-                "e.g. `hanoi LM` would move the top of the left tower onto the "
-                "middle tower.\n"
-                "the optimal solution for a tower of this height uses "
+                "e.g. `hanoi RM` would move the top of the right tower onto "
+                "the middle tower.\n"
+                f"**Starting game with a {self.max_height} layer tower...** "
+                "The optimal solution for a tower of this height uses "
                 f"{2**self.max_height - 1} moves\n"
+                f"{str(self)}"
+                "make a move with `hanoi LMR`"
             )
             
     def game_over(self):
@@ -116,7 +117,6 @@ class TowerOfHanoi:
             else:
                 dst.append(src.pop())
                 return True
-        self.response = "That is not a valid move! Please try again"
         return False
         
     def get_tower(self, tower: str):
