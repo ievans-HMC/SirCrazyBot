@@ -134,8 +134,6 @@ async def on_message(message):
         if re.search(r"(github)", message.content, re.I):
             response = "Check out the GitHub: " \
                        "https://github.com/ievans-HMC/SirCrazyBot"
-    else:
-        response = None
     if response:
         await message.channel.send(response)
         print(response)
