@@ -53,10 +53,9 @@ async def roll_die(match: re.Match):
 # ==============================================================================
 
 load_dotenv()
-try:
-    TOKEN = os.getenv('DISCORD_TOKEN')
-except:
-    pass
+
+TOKEN = os.getenv('DISCORD_TOKEN')
+
 
 client = discord.Client()
 
@@ -74,9 +73,10 @@ async def on_message(message):
         return
     # Checks the '#bot-games' channel for commands
     if message.channel.name == "bot-games":
-        if (match := re.match(r"!roll\sd(\d+)", message.content,re.I)):
+        if (match := re.match(r"roll\sd(\d+)", message.content,re.I)):
             response = await roll_die(match)
-        elif (match := re.match(r"!hanoi\s?(?:(\d*)|(newgame))", message.content,re.I)):
+        elif (match := re.match(r"hanoi\s?(?:(\d*)|(newgame))", 
+                                message.content,re.I)):
             print(match.group(0), match.group(1), match.group(2))
             if hanoi_games.get(message.guild.id) and not match.group(2):
                 response = "Someone has already started a game. "\
@@ -104,8 +104,8 @@ async def on_message(message):
                     "If the channel does not exist on this server, ask an " \
                     "admin to create it.\n" \
                     "Available commands:\n" \
-                    " - `!roll d<number>` (Roll a die of the specified size)\n"\
-                    " - `!hanoi <number>` (Play a game of Tower of Hanoi with "\
+                    " - `roll d<number>` (Roll a die of the specified size)\n"\
+                    " - `hanoi <number>` (Play a game of Tower of Hanoi with "\
                     "a specified tower height)"
     else:
         return
