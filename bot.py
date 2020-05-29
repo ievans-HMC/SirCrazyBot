@@ -96,6 +96,7 @@ async def roll_die(val: int):
 load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
+keywords = {'roll', 'hanoi', 'github'}
 
 
 client = discord.Client()
@@ -114,10 +115,10 @@ async def on_message(message):
     if message.author == client.user:
         return
     # Checks the '#bot-games' channel for commands
-    if message.channel.name == "bot-games":
+    if message.channel.name == "bot-games" and message.content.split()[0] in keywords:
         response = await bot_games(message)
     # Checks for mentions and sends a help message
-    if client.user in message.mentions:
+    if message.content.split()[0] in keywords:
         channel_name = "#bot-games"
         if (channel := discord.utils.get(message.guild.text_channels,
                                          name="bot-games")):
